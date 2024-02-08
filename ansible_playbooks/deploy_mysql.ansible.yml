@@ -1,0 +1,31 @@
+- hosts: data_app
+  become: yes
+  vars_files:
+    - vars/main.yml
+  vars: 
+    username: "{{ mysql_users[0].name }}"
+    password: "{{lookup('env', 'mysql_password')}}"
+  roles:
+    - { role: geerlingguy.mysql }
+  post_tasks:
+  - name: "Check if Mysql Script exists on remote machine"
+    stat:
+      path: "/home/azureuser/test.sql"
+    register: mysql_script
+
+  - name: "Copy Mysql Script From local machine to remote machine"
+    copy:
+      src: "test.sql"
+      dest: "/home/azureuser/test.sql"
+      mode: "0755"
+    when: mysql_script.stat.exists == false
+
+  - name: "Creating Tables in DB"
+    shell: "mysql --user={{username}} --database=test --password={{password}} < /home/azureuser/test.sql"
+    tags:
+      - test_table
+    register: output
+  - name: debuging previous step
+    debug: var=output
+    tags:
+      - test_table

@@ -1,0 +1,88 @@
+- hosts: business_app
+  vars_files:
+    - vars/main.yml
+  vars:
+    db_host: "{{ hostvars['data_app'].ansible_host }}"
+    NODEJS_VERSION: "v16.20.2"
+  tasks:
+
+    - name: Update apt repo and cache
+      become: yes
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: "Instaling Curl"
+      become: yes
+      apt:
+        name:
+          - curl
+        update_cache: yes
+
+    - name: "Run NVM installer script"
+      become_user: azureuser
+      shell: >
+        curl -o- https://raw.githubusercontent.com/creationix/nvm/master/install.sh | bash
+      args:
+        executable: /bin/bash
+        creates: "$HOME/.nvm/nvm.sh"
+ 
+    - name: Set execute permission for nvm.sh script
+      ansible.builtin.file:
+        path: "$HOME/.nvm/nvm.sh"
+        mode: "+x"
+
+    - name: Source nvm in ~/.{{ item }}
+      lineinfile:
+        dest: ~/.{{ item }}
+        line: "source ~/.nvm/nvm.sh"
+        create: yes
+      tags: nvm
+      with_items:
+        - bashrc
+        - profile
+
+
+    - name: "Checking if NVM was installed correctly"
+      # become: yes
+      become_user: azureuser
+      shell: "source ~/.nvm/nvm.sh && nvm install {{NODEJS_VERSION}} && nvm alias default {{NODEJS_VERSION}} && nvm use default" 
+      args:
+        executable: /bin/bash
+      register: output
+      ignore_errors: true
+
+    - name: Append Node.js path to .bashrc
+      lineinfile:
+        path: "$HOME/.bashrc"
+        line: 'export PATH=$PATH:$HOME/.nvm/versions/node/{{ NODEJS_VERSION }}/bin/node'
+        create: yes
+      become: yes
+
+    - name: Source .bashrc
+      shell: source "$HOME/.bashrc"
+      args:
+        executable: /bin/bash
+      become: yes
+
+    - name: "Debug"
+      debug:
+        var: output.stdout_lines
+      tags:
+      - "node_version"
+
+
+  # - name: Clone a github repository
+  #   git:
+  #     repo: https://github.com/rafiktaamma/3_tier_app.git
+  #     dest: /home/azureuser/repos/
+  #     clone: yes
+  #     update: yes
+  # - name: Check if DB is accesible
+  #   wait_for:
+  #     host: "{{db_host}}"
+  #     port: 3306
+  #     state: started
+  #     delay: 0
+  #     timeout: 1
+    
