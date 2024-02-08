@@ -30,4 +30,4 @@ terraform.rc
 json-file.json
 vm-sizes.json
 
-VM_Private_Key.pem
+*.pem
