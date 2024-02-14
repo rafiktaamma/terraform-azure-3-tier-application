@@ -1,0 +1,29 @@
+---
+- name: Stop all VMs in a resource group
+  hosts: localhost
+  gather_facts: no
+  tasks:
+    - name: Get VMs in the resource group
+      azure_rm_virtualmachine_info:
+        resource_group: "rg-collab-rt"
+      register: vms_info
+
+    - debug:
+        var: vms_info
+
+
+    - name: Stop VMs
+      azure_rm_virtualmachine:
+        resource_group: "{{ item.resource_group }}"
+        name: "{{ item.name }}"
+        allocated: no
+      with_items: "{{ vms_info.vms }}"
+
+    - name: Start Vms
+      azure_rm_virtualmachine:
+        resource_group: "{{ item.resource_group }}"
+        name: "{{ item.name }}"
+        allocated: yes
+      with_items: "{{ vms_info.vms }}"
+      tags:
+      - start

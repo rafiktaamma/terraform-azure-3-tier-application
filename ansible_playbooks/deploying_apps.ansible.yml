@@ -1,0 +1,71 @@
+# Playbook to deploy backend
+- hosts: business_app
+  gather_facts: true
+  become_user: azureuser
+  vars_files:
+    - vars/main.yml
+  vars:
+    db_host: "{{ hostvars['data_app'].ansible_host }}"
+  tasks:
+
+ #Just for Debuging puposes
+  - name: Print PATH variable
+    ansible.builtin.command:
+      cmd: echo $PATH
+    environment:
+      PATH: "{{ ansible_env.PATH }}:{{ ansible_env.NODE_HOME }}"
+    register: path_output
+
+  - name: Debug printed PATH variable
+    ansible.builtin.debug:
+      msg: "Printed PATH variable: {{ path_output.stdout }}"
+
+
+
+
+  - name: Clone a github repository
+    git:
+      repo: https://github.com/rafiktaamma/3_tier_app.git
+      dest: /home/azureuser/repos/
+      clone: yes
+      update: yes
+
+  - name: Check if DB is accesible
+    wait_for:
+      host: "{{db_host}}"
+      port: 3306
+      state: started
+      delay: 0
+      timeout: 1
+    ignore_errors: yes
+
+  - name: "Instaling Npm dependecies" 
+    shell: "cd $HOME/repos/backend && npm install"
+    args:
+      executable: /bin/bash
+    register: version
+    become_user: azureuser
+    environment:
+      PATH: "{{ ansible_env.PATH }}:{{ansible_env.NODE_HOME}}"
+    tags:
+      - npm_install
+
+  - name: "Instaling pm2 globaly" 
+    shell: "npm install pm2@latest -g"
+    args:
+      executable: /bin/bash
+    register: version
+    become_user: azureuser
+    become: yes
+    environment:
+      PATH: "{{ ansible_env.PATH }}:{{ansible_env.NODE_HOME}}"
+    tags:
+      - npm_install 
+
+  - debug:
+      var : version.stdout_lines
+  
+# Access the repo/backend 
+# npm install packages 
+# run the application as a service 
+

@@ -297,7 +297,7 @@ resource "azurerm_linux_virtual_machine" "web_app" {
   }
 
   computer_name                   = "webApp"
-  admin_username                  = "azureuser"
+  admin_sernameu                  = "azureuser"
   disable_password_authentication = true
 
   admin_ssh_key {

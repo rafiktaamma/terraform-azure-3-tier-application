@@ -1,8 +1,8 @@
 - hosts: business_app
+  gather_facts: true
   vars_files:
     - vars/main.yml
   vars:
-    db_host: "{{ hostvars['data_app'].ansible_host }}"
     NODEJS_VERSION: "v16.20.2"
   tasks:
 
@@ -41,7 +41,7 @@
       with_items:
         - bashrc
         - profile
-
+      become_user: azureuser
 
     - name: "Checking if NVM was installed correctly"
       # become: yes
@@ -52,37 +52,23 @@
       register: output
       ignore_errors: true
 
-    - name: Append Node.js path to .bashrc
-      lineinfile:
-        path: "$HOME/.bashrc"
-        line: 'export PATH=$PATH:$HOME/.nvm/versions/node/{{ NODEJS_VERSION }}/bin/node'
-        create: yes
-      become: yes
 
-    - name: Source .bashrc
-      shell: source "$HOME/.bashrc"
+
+    - name: "Checking npm version" 
+      shell: "node -v"
       args:
         executable: /bin/bash
+      register: version
+      become_user: azureuser
+      environment:
+        PATH: "{{ ansible_env.PATH }}:/home/azureuser/.nvm/versions/node/v16.20.2/bin"
+
+    - name: Add path to /etc/environment
+      ansible.builtin.lineinfile:
+        path: /etc/environment
+        line: "NODE_HOME={{ ansible_env.HOME }}/.nvm/versions/node/{{ NODEJS_VERSION }}/bin/"
       become: yes
 
-    - name: "Debug"
-      debug:
-        var: output.stdout_lines
-      tags:
-      - "node_version"
 
 
-  # - name: Clone a github repository
-  #   git:
-  #     repo: https://github.com/rafiktaamma/3_tier_app.git
-  #     dest: /home/azureuser/repos/
-  #     clone: yes
-  #     update: yes
-  # - name: Check if DB is accesible
-  #   wait_for:
-  #     host: "{{db_host}}"
-  #     port: 3306
-  #     state: started
-  #     delay: 0
-  #     timeout: 1
     
