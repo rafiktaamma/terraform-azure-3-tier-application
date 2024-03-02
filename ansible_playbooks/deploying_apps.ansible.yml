@@ -5,7 +5,10 @@
   vars_files:
     - vars/main.yml
   vars:
-    db_host: "{{ hostvars['data_app'].ansible_host }}"
+    DB_HOST: "{{ hostvars['data_app'].ansible_host }}"
+    DB_USERNAME: "rafiktaamma"
+    DB_PASSWORD: "{{lookup('env', 'DB_PASSWORD')}}"
+    DB_PORT: 3306
   tasks:
 
  #Just for Debuging puposes
@@ -32,7 +35,7 @@
 
   - name: Check if DB is accesible
     wait_for:
-      host: "{{db_host}}"
+      host: "{{DB_HOST}}"
       port: 3306
       state: started
       delay: 0
@@ -54,7 +57,6 @@
     shell: "npm install pm2@latest -g"
     args:
       executable: /bin/bash
-    register: version
     become_user: azureuser
     become: yes
     environment:
@@ -62,10 +64,63 @@
     tags:
       - npm_install 
 
+    # New tasks
+  - name: Delete the application from PM2
+    command: pm2 delete index
+    ignore_errors: yes
+    changed_when: False
+    become_user: azureuser
+    environment:
+      PATH: "{{ ansible_env.PATH }}:{{ansible_env.NODE_HOME}}"
+
+  - name: Start the application with PM2
+    command: pm2 start /home/azureuser/repos/backend/index.js
+    become_user: azureuser
+    environment:
+      PATH: "{{ ansible_env.PATH }}:{{ansible_env.NODE_HOME}}"
+      DB_HOST: "{{DB_HOST}}"
+      DB_USERNAME: "{{DB_USERNAME}}"
+      DB_PASSWORD: "{{DB_PASSWORD}}"
+      PORT: "{{DB_PORT}}"
+
+  - name: Set PM2 to start on boot
+    command: pm2 startup systemd
+    become_user: root
+    become: yes
+    environment:
+      PATH: "{{ ansible_env.PATH }}:{{ansible_env.NODE_HOME}}"
+    ignore_errors: yes
+
+  - name: Run the command from the output
+    shell:   env PATH=$PATH:/home/azureuser/.nvm/versions/node/v16.20.2/bin pm2 startup systemd -u azureuser --hp /home/azureuser
+    become: yes
+    become_user: root
+    register: output
+    tags:
+    - service
+    ignore_errors: yes
+ 
   - debug:
-      var : version.stdout_lines
-  
-# Access the repo/backend 
-# npm install packages 
-# run the application as a service 
+      var: output.stdout_lines
+    tags:
+    - service
+
+  - name: Save the PM2 process list and corresponding environments
+    command: pm2 save
+    become_user: azureuser
+    environment:
+      PATH: "{{ ansible_env.PATH }}:{{ansible_env.NODE_HOME}}"
+      
+  - name: Start the service with systemctl
+    service:
+      name: pm2-azureuser
+      state: started
+
+  - name: Check the status of the systemd unit
+    command: systemctl status pm2-azureuser
+    register: result
+    changed_when: False
+
+  - debug: var=result.stdout_lines
+
 

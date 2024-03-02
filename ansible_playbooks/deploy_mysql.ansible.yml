@@ -4,7 +4,7 @@
     - vars/main.yml
   vars: 
     username: "{{ mysql_users[0].name }}"
-    password: "{{lookup('env', 'mysql_password')}}"
+    password: "{{lookup('env', 'DB_PASSWORD')}}"
   roles:
     - { role: geerlingguy.mysql }
   post_tasks:

@@ -1,0 +1,2 @@
+business_app ansible_host=192.168.1.73 ansible_user=azureuser ansible_ssh_private_key_file=/home/rafiktaamma/.ssh/VM_Private_Key.pem
+data_app ansible_host=asterism-data-app.francecentral.cloudapp.azure.com ansible_user=azureuser ansible_ssh_private_key_file=/home/rafiktaamma/.ssh/VM_Private_Key.pem

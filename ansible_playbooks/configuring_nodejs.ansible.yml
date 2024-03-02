@@ -11,14 +11,18 @@
       apt:
         update_cache: yes
         cache_valid_time: 3600
+      ignore_errors: yes
 
-    - name: "Instaling Curl"
+
+    - name: "Instaling packages"
       become: yes
       apt:
         name:
           - curl
+          - git
         update_cache: yes
-
+      ignore_errors: yes
+      
     - name: "Run NVM installer script"
       become_user: azureuser
       shell: >
@@ -61,7 +65,7 @@
       register: version
       become_user: azureuser
       environment:
-        PATH: "{{ ansible_env.PATH }}:/home/azureuser/.nvm/versions/node/v16.20.2/bin"
+        PATH: "{{ ansible_env.PATH }}:{{ ansible_env.HOME }}/.nvm/versions/node/v16.20.2/bin"
 
     - name: Add path to /etc/environment
       ansible.builtin.lineinfile:
