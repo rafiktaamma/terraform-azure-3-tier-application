@@ -11,22 +11,31 @@
   post_tasks:
   - name: "Check if Mysql Script exists on remote machine"
     stat:
-      path: "/home/azureuser/test.sql"
+      path: "/home/{{ ansible_user }}/test.sql"
     register: mysql_script
 
   - name: "Copy Mysql Script From local machine to remote machine"
     copy:
       src: "test.sql"
-      dest: "/home/azureuser/test.sql"
+      dest: "/home/{{ ansible_user }}/test.sql"
       mode: "0755"
     when: mysql_script.stat.exists == false
 
-  - name: "Creating Tables in DB"
-    shell: "mysql --user={{username}} --database={{db_name}} --password={{password}} < /home/azureuser/test.sql"
-    tags:
-      - test_table
+  - name: Allow 3306/tcp through UFW
+    ufw:
+      rule: allow
+      port: '3306'
+      proto: tcp
+
+  - name: Creating Tables in DB
+    community.mysql.mysql_db:
+      login_user: "{{username}}"
+      login_password: "{{password}}"
+      name: "{{db_name}}"
+      state: import
+      target: /home/{{ansible_user}}/test.sql
     register: output
-    
+
   - name: debuging previous step
     debug: var=output
     tags:
