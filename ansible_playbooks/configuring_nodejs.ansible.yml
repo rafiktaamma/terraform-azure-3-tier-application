@@ -1,18 +1,19 @@
-- hosts: business_app
+- hosts: nodejs_servers
   gather_facts: true
   vars_files:
     - vars/main.yml
   vars:
-    NODEJS_VERSION: "v16.20.2"
+    NODEJS_VERSION: "v20.14.0"
+    node_version_path: "{{ ansible_env.HOME }}/.nvm/versions/node/{{ NODEJS_VERSION }}/bin"
+  environment:
+    PATH: "{{ ansible_env.PATH }}:{{ node_version_path }}"
   tasks:
-
     - name: Update apt repo and cache
       become: yes
       apt:
         update_cache: yes
         cache_valid_time: 3600
       ignore_errors: yes
-
 
     - name: "Instaling packages"
       become: yes
@@ -24,7 +25,6 @@
       ignore_errors: yes
       
     - name: "Run NVM installer script"
-      become_user: azureuser
       shell: >
         curl -o- https://raw.githubusercontent.com/creationix/nvm/master/install.sh | bash
       args:
@@ -45,34 +45,19 @@
       with_items:
         - bashrc
         - profile
-      become_user: azureuser
 
     - name: "Checking if NVM was installed correctly"
-      # become: yes
-      become_user: azureuser
       shell: "source ~/.nvm/nvm.sh && nvm install {{NODEJS_VERSION}} && nvm alias default {{NODEJS_VERSION}} && nvm use default" 
       args:
         executable: /bin/bash
       register: output
       ignore_errors: true
 
-
-
-    - name: "Checking npm version" 
+    - name: Checking node version
       shell: "node -v"
-      args:
-        executable: /bin/bash
       register: version
-      become_user: azureuser
-      environment:
-        PATH: "{{ ansible_env.PATH }}:{{ ansible_env.HOME }}/.nvm/versions/node/v16.20.2/bin"
 
-    - name: Add path to /etc/environment
-      ansible.builtin.lineinfile:
-        path: /etc/environment
-        line: "NODE_HOME={{ ansible_env.HOME }}/.nvm/versions/node/{{ NODEJS_VERSION }}/bin/"
-      become: yes
-
-
+    - debug:
+        msg: "{{ version.stdout }}"
 
     

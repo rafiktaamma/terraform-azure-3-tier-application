@@ -3,3 +3,6 @@ business_app ansible_host=10634d01751c.mylabserver.com ansible_user=ansible-user
 web_app ansible_host=10634d01753c.mylabserver.com ansible_user=ansible-user ansible_ssh_private_key_file=/home/rafiktaamma/.ssh/VM_Key
 data_app ansible_host=10634d01752c.mylabserver.com ansible_user=ansible-user ansible_ssh_private_key_file=/home/rafiktaamma/.ssh/VM_Key
 
+[nodejs_servers]
+business_app
+web_app
