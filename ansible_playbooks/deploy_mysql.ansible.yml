@@ -5,6 +5,7 @@
   vars: 
     username: "{{ mysql_users[0].name }}"
     password: "{{lookup('env', 'DB_PASSWORD')}}"
+    db_name: "{{mysql_databases[0].name}}"
   roles:
     - { role: geerlingguy.mysql }
   post_tasks:
@@ -21,10 +22,11 @@
     when: mysql_script.stat.exists == false
 
   - name: "Creating Tables in DB"
-    shell: "mysql --user={{username}} --database=test --password={{password}} < /home/azureuser/test.sql"
+    shell: "mysql --user={{username}} --database={{db_name}} --password={{password}} < /home/azureuser/test.sql"
     tags:
       - test_table
     register: output
+    
   - name: debuging previous step
     debug: var=output
     tags:
