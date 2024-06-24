@@ -3,7 +3,6 @@
   vars_files:
     - vars/main.yml
   vars:
-    NODEJS_VERSION: "v20.14.0"
     node_version_path: "{{ ansible_env.HOME }}/.nvm/versions/node/{{ NODEJS_VERSION }}/bin"
   environment:
     PATH: "{{ ansible_env.PATH }}:{{ node_version_path }}"

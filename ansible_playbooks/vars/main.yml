@@ -15,3 +15,5 @@ mysql_users:
     password: "{{lookup('env', 'mysql_password')}}"
     host: "%"
     priv: "*.*:ALL"
+db_port: 3306
+NODEJS_VERSION: "v20.14.0"

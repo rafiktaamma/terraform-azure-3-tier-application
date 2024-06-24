@@ -1,126 +1,116 @@
 # Playbook to deploy backend
+- hosts: data_app
+  gather_facts: true
+  tasks:
+    - name: Save private IP address to a fact
+      set_fact:
+        data_app_private_ip: "{{ ansible_default_ipv4.address }}"
+
 - hosts: business_app
   gather_facts: true
-  become_user: azureuser
   vars_files:
     - vars/main.yml
   vars:
-    DB_HOST: "{{ hostvars['data_app'].ansible_host }}"
-    DB_USERNAME: "rafiktaamma"
-    DB_PASSWORD: "{{lookup('env', 'DB_PASSWORD')}}"
-    DB_PORT: 3306
+    DB_HOST: "{{ hostvars['data_app'].data_app_private_ip }}"
+    password: "{{ lookup('env', 'DB_PASSWORD') }}"
+    node_version_path: "{{ ansible_env.HOME }}/.nvm/versions/node/{{ NODEJS_VERSION }}/bin"
+    app_dir: "/home/{{ ansible_user }}/repos/backend"
+    app_service_name: "backend_app" 
+    app_port: 8080   
+  environment:
+    PATH: "{{ ansible_env.PATH }}:{{ node_version_path }}"
+    # DB_HOST: "{{ DB_HOST }}"
+    # DB_USERNAME: "{{ mysql_users[0].name }}"
+    # DB_PASSWORD: "{{ lookup('env', 'DB_PASSWORD') }}"
+    # DB_PORT: "{{ db_port }}"
+    # DB_NAME: "{{ mysql_databases[0].name }}"
   tasks:
 
- #Just for Debuging puposes
-  - name: Print PATH variable
-    ansible.builtin.command:
-      cmd: echo $PATH
-    environment:
-      PATH: "{{ ansible_env.PATH }}:{{ ansible_env.NODE_HOME }}"
-    register: path_output
+    - name: Execute printenv command
+      shell: printenv
+      register: env_output
 
-  - name: Debug printed PATH variable
-    ansible.builtin.debug:
-      msg: "Printed PATH variable: {{ path_output.stdout }}"
+    - name: Display environment variables
+      debug:
+        msg: "{{ env_output.stdout_lines }}"
 
+    - name: Clone a GitHub repository
+      git:
+        repo: https://github.com/rafiktaamma/3_tier_app.git
+        dest: "/home/{{ ansible_user }}/repos/"
+        clone: yes
+        update: yes
 
+    - name: Allow 3306/tcp through UFW
+      become: yes
+      ufw:
+        rule: allow
+        port: '3306'
+        proto: tcp
 
+    - name: Check if DB is accesible
+      wait_for:
+        host: "{{ DB_HOST }}"
+        port: 3306
+        timeout: 10
+        state: started
+      register: result
 
-  - name: Clone a github repository
-    git:
-      repo: https://github.com/rafiktaamma/3_tier_app.git
-      dest: /home/azureuser/repos/
-      clone: yes
-      update: yes
+    - name: Install Node.js dependencies
+      npm:
+        path: "{{ app_dir }}"
+        state: present
 
-  - name: Check if DB is accesible
-    wait_for:
-      host: "{{DB_HOST}}"
-      port: 3306
-      state: started
-      delay: 0
-      timeout: 1
-    ignore_errors: yes
+    - name: Install PM2 globally
+      npm:
+        name: pm2
+        global: yes
+        state: present
 
-  - name: "Instaling Npm dependecies" 
-    shell: "cd $HOME/repos/backend && npm install"
-    args:
-      executable: /bin/bash
-    register: version
-    become_user: azureuser
-    environment:
-      PATH: "{{ ansible_env.PATH }}:{{ansible_env.NODE_HOME}}"
-    tags:
-      - npm_install
+    - name: Set up PM2 ecosystem file
+      copy:
+        dest: "{{ app_dir }}/ecosystem.config.cjs"
+        content: |
+          module.exports = {
+            apps: [{
+              name: "{{ app_service_name }}",
+              script: "./repos/backend/index.js",
+              env: {
+                NODE_ENV: "production",
+                DB_HOST: "{{ DB_HOST }}",
+                DB_USERNAME: "{{ mysql_users[0].name }}",
+                DB_PASSWORD: "{{ lookup('env', 'DB_PASSWORD') }}",
+                DB_PORT: "{{ db_port }}",
+                DB_NAME: "{{ mysql_databases[0].name }}",
+                PORT: "{{ app_port }}"
+              }
+            }]
+          }
 
-  - name: "Instaling pm2 globaly" 
-    shell: "npm install pm2@latest -g"
-    args:
-      executable: /bin/bash
-    become_user: azureuser
-    become: yes
-    environment:
-      PATH: "{{ ansible_env.PATH }}:{{ansible_env.NODE_HOME}}"
-    tags:
-      - npm_install 
+    - name: Start the Node.js application with PM2
+      shell: pm2 start {{ app_dir }}/ecosystem.config.cjs --env production
+      args:
+        creates: /root/.pm2/dump.pm2
 
-    # New tasks
-  - name: Delete the application from PM2
-    command: pm2 delete index
-    ignore_errors: yes
-    changed_when: False
-    become_user: azureuser
-    environment:
-      PATH: "{{ ansible_env.PATH }}:{{ansible_env.NODE_HOME}}"
+    - name: Save the PM2 process list
+      shell: pm2 save
 
-  - name: Start the application with PM2
-    command: pm2 start /home/azureuser/repos/backend/index.js
-    become_user: azureuser
-    environment:
-      PATH: "{{ ansible_env.PATH }}:{{ansible_env.NODE_HOME}}"
-      DB_HOST: "{{DB_HOST}}"
-      DB_USERNAME: "{{DB_USERNAME}}"
-      DB_PASSWORD: "{{DB_PASSWORD}}"
-      PORT: "{{DB_PORT}}"
+    - name: Set up PM2 to start on reboot
+      become: yes
+      command: sudo env PATH=$PATH:{{ node_version_path }} pm2 startup systemd -u {{ ansible_user }} --hp /home/{{ ansible_user }}
+      register: pm2_startup
 
-  - name: Set PM2 to start on boot
-    command: pm2 startup systemd
-    become_user: root
-    become: yes
-    environment:
-      PATH: "{{ ansible_env.PATH }}:{{ansible_env.NODE_HOME}}"
-    ignore_errors: yes
+    - name: Ensure firewall allows traffic on app port
+      become: yes
+      ufw:
+        rule: allow
+        port: '{{ app_port }}'
+        proto: tcp
 
-  - name: Run the command from the output
-    shell:   env PATH=$PATH:/home/azureuser/.nvm/versions/node/v16.20.2/bin pm2 startup systemd -u azureuser --hp /home/azureuser
-    become: yes
-    become_user: root
-    register: output
-    tags:
-    - service
-    ignore_errors: yes
- 
-  - debug:
-      var: output.stdout_lines
-    tags:
-    - service
-
-  - name: Save the PM2 process list and corresponding environments
-    command: pm2 save
-    become_user: azureuser
-    environment:
-      PATH: "{{ ansible_env.PATH }}:{{ansible_env.NODE_HOME}}"
-      
-  - name: Start the service with systemctl
-    service:
-      name: pm2-azureuser
-      state: started
-
-  - name: Check the status of the systemd unit
-    command: systemctl status pm2-azureuser
-    register: result
-    changed_when: False
-
-  - debug: var=result.stdout_lines
-
-
+    - name: Check if the application is running
+      wait_for:
+        host: 127.0.0.1
+        port: '{{ app_port }}'
+        timeout: 10
+        state: started
+      register: result

@@ -34,3 +34,5 @@ vm-sizes.json
 
 .vscode
 .
+
+ansible_playbooks/temp.yml
