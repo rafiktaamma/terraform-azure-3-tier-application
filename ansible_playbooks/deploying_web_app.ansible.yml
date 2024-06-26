@@ -1,0 +1,144 @@
+# Playbook to deploy Web app (frontend)
+- hosts: business_app
+  gather_facts: true
+  tasks:
+    - name: Save private IP address to a fact
+      set_fact:
+        business_app_private_ip: "{{ ansible_default_ipv4.address }}"
+      # This task is to retrieve the private ip of the business_app. As the communication between VM in cloud guru needs to pass by the private network
+
+- hosts: web_app
+  gather_facts: true
+  vars_files:
+    - vars/main.yml
+  vars:
+    BUSINESS_APP_IP: "{{ hostvars['business_app'].ansible_host }}"
+    BUSINESS_APP_PRIVATE_IP: "{{ hostvars['business_app'].business_app_private_ip }}"
+    BUSINESS_APP_PORT: "{{business_app_port}}"
+    WEB_APP_PORT: "{{web_app_port}}"
+    node_version_path: "{{ ansible_env.HOME }}/.nvm/versions/node/{{ NODEJS_VERSION }}/bin"
+    app_dir: "/home/{{ ansible_user }}/repos/client"
+    app_service_name: "web_app"
+    web_root: "/var/www/my-web-app"
+  environment:
+    PATH: "{{ ansible_env.PATH }}:{{ node_version_path }}"
+    REACT_APP_API_BASE_URL: "http://{{BUSINESS_APP_IP}}:{{BUSINESS_APP_PORT}}"
+  tasks:
+
+    - name: Execute printenv command
+      shell: printenv
+      register: env_output
+
+    - name: Display environment variables
+      debug:
+        msg: "{{ env_output.stdout_lines }}"
+
+    - name: Clone a GitHub repository
+      git:
+        repo: https://github.com/rafiktaamma/3_tier_app.git
+        dest: "/home/{{ ansible_user }}/repos/"
+        clone: yes
+        update: yes
+        force: yes
+
+    - name: Allow access Business app port through UFW
+      become: yes
+      ufw:
+        rule: allow
+        port: "{{BUSINESS_APP_PORT}}"
+        proto: tcp
+
+    - name: Allow access Web app port through UFW
+      become: yes
+      ufw:
+        rule: allow
+        port: "{{WEB_APP_PORT}}"
+        proto: tcp
+
+    - name: Allow 'Nginx Full' through UFW
+      ansible.builtin.ufw:
+        rule: allow
+        name: Nginx Full
+      become: yes
+
+    - name: Check if Business app is accessible
+      wait_for:
+        host: "{{ BUSINESS_APP_PRIVATE_IP }}"
+        port: "{{ BUSINESS_APP_PORT }}"
+        timeout: 10
+        state: started
+      register: result
+
+    - name: Install Node.js dependencies
+      npm:
+        path: "{{ app_dir }}"
+        state: present
+
+    - name: Build the application
+      command: npm run build
+      args:
+        chdir: "{{ app_dir }}"
+
+    - name: Install Nginx
+      apt:
+        name: nginx
+        state: present
+      become: yes
+
+    - name: Ensure web root directory exists
+      become: yes
+      file:
+        path: "{{ web_root }}"
+        state: directory
+
+    - name: Remove existing files in web root
+      become: yes
+      file:
+        path: "{{ web_root }}"
+        state: absent
+      ignore_errors: true
+
+    - name: Create web root directory again after deletion
+      become: yes
+      file:
+        path: "{{ web_root }}"
+        state: directory
+
+    - name: Copy build files to web root
+      become: yes
+      shell: cp -r {{ app_dir }}/build/* {{ web_root }}/
+
+    - name: Configure Nginx
+      copy:
+        dest: /etc/nginx/sites-available/web-app
+        content: |
+          server {
+              listen 80;
+              server_name _;
+              root {{ web_root }};
+
+              location / {
+                  try_files $uri $uri/ /index.html;
+              }
+          }
+      become: yes
+
+    - name: Create symbolic link for nginx site configuration
+      become: yes
+      ansible.builtin.file:
+        src: /etc/nginx/sites-available/web-app
+        dest: /etc/nginx/sites-enabled/web-app
+        state: link
+  
+    - name: Start and enable Nginx service
+      systemd:
+        name: nginx
+        state: started
+        enabled: yes
+      become: yes
+
+    - name: Reload Nginx service
+      systemd:
+        name: nginx
+        state: reloaded
+      become: yes

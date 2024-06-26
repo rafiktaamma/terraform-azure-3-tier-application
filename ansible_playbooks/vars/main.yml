@@ -17,3 +17,5 @@ mysql_users:
     priv: "*.*:ALL"
 db_port: 3306
 NODEJS_VERSION: "v20.14.0"
+business_app_port: 8080
+web_app_port: 3000

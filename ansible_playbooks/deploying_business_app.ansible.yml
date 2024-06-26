@@ -5,6 +5,7 @@
     - name: Save private IP address to a fact
       set_fact:
         data_app_private_ip: "{{ ansible_default_ipv4.address }}"
+      # This task is to retireve the private ip of the data_app . as the communcation between VM in cloud guru needs to pass by the private network 
 
 - hosts: business_app
   gather_facts: true
@@ -16,14 +17,9 @@
     node_version_path: "{{ ansible_env.HOME }}/.nvm/versions/node/{{ NODEJS_VERSION }}/bin"
     app_dir: "/home/{{ ansible_user }}/repos/backend"
     app_service_name: "backend_app" 
-    app_port: 8080   
+    app_port: "{{business_app_port}}"   
   environment:
     PATH: "{{ ansible_env.PATH }}:{{ node_version_path }}"
-    # DB_HOST: "{{ DB_HOST }}"
-    # DB_USERNAME: "{{ mysql_users[0].name }}"
-    # DB_PASSWORD: "{{ lookup('env', 'DB_PASSWORD') }}"
-    # DB_PORT: "{{ db_port }}"
-    # DB_NAME: "{{ mysql_databases[0].name }}"
   tasks:
 
     - name: Execute printenv command
