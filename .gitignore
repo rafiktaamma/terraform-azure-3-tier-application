@@ -36,3 +36,4 @@ vm-sizes.json
 .
 
 ansible_playbooks/temp.yml
+ansible_playbooks/*[Kk][Ee][Yy]*
