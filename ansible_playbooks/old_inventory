@@ -1,8 +1,0 @@
-data_app ansible_host=asterism-data-app.francecentral.cloudapp.azure.com ansible_user=azureuser ansible_ssh_private_key_file=/home/rafiktaamma/.ssh/VM_Private_Key.pem
-business_app ansible_host=asterism-business-app.francecentral.cloudapp.azure.com ansible_user=azureuser ansible_ssh_private_key_file=/home/rafiktaamma/.ssh/VM_Private_Key.pem
-web_app ansible_host=asterism-web-app.francecentral.cloudapp.azure.com ansible_user=azureuser ansible_ssh_private_key_file=/home/rafiktaamma/.ssh/VM_Private_Key.pem
-
-[nodejs_servers]
-business_app
-web_app
-

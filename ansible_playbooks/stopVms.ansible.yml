@@ -1,3 +1,4 @@
+# this ansible playbook is used to stop vm in azure . 
 ---
 - name: Stop all VMs in a resource group
   hosts: localhost

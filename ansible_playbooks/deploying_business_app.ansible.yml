@@ -13,7 +13,7 @@
     - vars/main.yml
   vars:
     DB_HOST: "{{ hostvars['data_app'].data_app_private_ip }}"
-    password: "{{ lookup('env', 'DB_PASSWORD') }}"
+    password: "{{ lookup('env', 'DB_PASSWORD') }}"  # Password is retrieved from the environement variable 
     node_version_path: "{{ ansible_env.HOME }}/.nvm/versions/node/{{ NODEJS_VERSION }}/bin"
     app_dir: "/home/{{ ansible_user }}/repos/backend"
     app_service_name: "backend_app" 

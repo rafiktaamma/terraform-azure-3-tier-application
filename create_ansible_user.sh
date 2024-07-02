@@ -10,7 +10,7 @@ fi
 useradd -m -s /bin/bash ansible-user
 
 # Set a password for ansible-user (change 'yourpassword' to the desired password)
-echo "ansible-user:Ansible17@" | chpasswd
+echo "ansible-user:yourpassword" | chpasswd
 
 # Add ansible-user to the sudoers file with no password requirement
 echo "ansible-user ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/ansible-user

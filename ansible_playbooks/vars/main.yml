@@ -8,11 +8,11 @@ mysql_databases:
     collation: latin1_general_ci
 mysql_users: 
   - name: rafiktaamma 
-    password: "{{lookup('env', 'mysql_password')}}"
+    password: "{{lookup('env', 'mysql_password')}}" # Password is retrieved from the environement variable 
     host: "localhost"
     priv: "*.*:ALL"
   - name: rafiktaamma 
-    password: "{{lookup('env', 'mysql_password')}}"
+    password: "{{lookup('env', 'mysql_password')}}" # Password is retrieved from the environement variable 
     host: "%"
     priv: "*.*:ALL"
 db_port: 3306

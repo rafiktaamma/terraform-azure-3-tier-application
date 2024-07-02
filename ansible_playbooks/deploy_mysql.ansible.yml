@@ -4,7 +4,7 @@
     - vars/main.yml
   vars: 
     username: "{{ mysql_users[0].name }}"
-    password: "{{lookup('env', 'DB_PASSWORD')}}"
+    password: "{{lookup('env', 'DB_PASSWORD')}}" # Password is retrieved from the environement variable 
     db_name: "{{mysql_databases[0].name}}"
   roles:
     - { role: geerlingguy.mysql }
